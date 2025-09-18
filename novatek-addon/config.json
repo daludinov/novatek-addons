@@ -1,0 +1,38 @@
+{
+  "name": "Novatek Monitor",
+  "version": "0.1.0",
+  "slug": "novatek_monitor",
+  "description": "Мониторинг устройства Novatek и публикация сенсоров в MQTT с autodiscovery Home Assistant.",
+  "arch": ["aarch64", "amd64", "armhf", "armv7", "i386"],
+  "startup": "services",
+  "boot": "auto",
+  "init": false,
+  "map": ["config:ro"],
+  "ports": {},
+  "ingress": false,
+  "options": {
+    "device_host": "172.24.15.248",
+    "device_password": "4129177",
+    "mqtt_host": "core-mosquitto",
+    "mqtt_port": 1883,
+    "mqtt_username": "",
+    "mqtt_password": "",
+    "base_topic": "novatek",
+    "discovery_prefix": "homeassistant",
+    "poll_fast_seconds": 10,
+    "poll_slow_seconds": 60
+  },
+  "schema": {
+    "device_host": "str",
+    "device_password": "str",
+    "mqtt_host": "str",
+    "mqtt_port": "int",
+    "mqtt_username": "str?",
+    "mqtt_password": "str?",
+    "base_topic": "str",
+    "discovery_prefix": "str",
+    "poll_fast_seconds": "int",
+    "poll_slow_seconds": "int"
+  }
+}
+

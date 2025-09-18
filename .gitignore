@@ -1,0 +1,24 @@
+# Python / Editor
+__pycache__/
+.DS_Store
+.venv/
+
+# Build artifacts
+*.log
+*.tmp
+
+# Local dev files
+novatek-addon/dev-options.json
+*.cookies.txt
+.sid
+.dump_get.jsonl
+.event_dump.jsonl
+.loger_dump.jsonl
+.syslog_dump.jsonl
+.endpoints_get.txt
+.endpoints_set.txt
+GET_Report.md
+GET_Useful.md
+LOGS_Report.md
+SET_Catalog.md
+
