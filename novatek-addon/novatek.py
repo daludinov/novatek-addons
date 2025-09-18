@@ -234,11 +234,13 @@ def main():
                 "device_class": s.get("device_class"),
                 "state_class": s.get("state_class"),
                 "entity_category": s.get("entity_category"),
-                "value_template": vt,
                 "availability_topic": avail_topic,
                 "payload_available": "online",
                 "payload_not_available": "offline",
             }
+            # Для timestamp не задаём value_template, чтобы HA парсил ISO8601 автоматически
+            if s["key"] != "time":
+                config["value_template"] = vt
             # remove None values
             config = {k: v for k, v in config.items() if v is not None}
             object_id = s["key"]
