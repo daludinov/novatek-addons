@@ -125,7 +125,7 @@ SENSORS = [
     {"key": "enrga_m_msr", "name": "Energy Month", "device_class": "energy", "unit": "kWh", "scale": 0.001, "state_class": "total", "fast": False, "entity_category": "diagnostic"},
     {"key": "enrgs_msr", "name": "Energy Sum Alt", "device_class": "energy", "unit": "kWh", "scale": 0.001, "state_class": "total_increasing", "fast": False, "entity_category": "diagnostic"},
     # System/time/WiFi (diagnostics)
-    {"key": "time", "name": "Device Time", "device_class": None, "unit": None, "scale": 1.0, "state_class": None, "fast": False, "entity_category": "diagnostic"},
+    {"key": "time", "name": "Device Time", "device_class": "timestamp", "unit": None, "scale": 1.0, "state_class": None, "fast": False, "entity_category": "diagnostic"},
     {"key": "time_gmt", "name": "Time GMT Offset", "device_class": None, "unit": "s", "scale": 1.0, "state_class": None, "fast": False, "entity_category": "diagnostic"},
     {"key": "sync_sntp_time", "name": "SNTP Sync Interval", "device_class": None, "unit": "s", "scale": 0.001, "state_class": None, "fast": False, "entity_category": "diagnostic"},
     {"key": "wifi_ip", "name": "WiFi IP", "device_class": None, "unit": None, "scale": 1.0, "state_class": None, "fast": False, "entity_category": "diagnostic"},
@@ -370,6 +370,10 @@ def main():
                         if key == "sync_sntp_time" and isinstance(v, (int, float)):
                             publish_value = round(v / 1000.0, 3)
                             mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", publish_value, retain=True)
+                        elif key == "time" and isinstance(v, (int, float)):
+                            # Publish ISO 8601 UTC for HA timestamp device_class
+                            publish_value = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(v))
+                            mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", publish_value, retain=True)
                         else:
                             publish_value = scale_and_round(key, v)
                             mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", publish_value, retain=True)
@@ -449,6 +453,9 @@ def main():
                             else:
                                 if key == "sync_sntp_time" and isinstance(v, (int, float)):
                                     publish_value = round(v / 1000.0, 3)
+                                    mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", publish_value)
+                                elif key == "time" and isinstance(v, (int, float)):
+                                    publish_value = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(v))
                                     mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", publish_value)
                                 else:
                                     publish_value = scale_and_round(key, v)
