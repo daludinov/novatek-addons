@@ -5,7 +5,7 @@ CONFIG_PATH=/data/options.json
 if [ -f "$CONFIG_PATH" ]; then
   device_host=$(jq -r '.device_host' "$CONFIG_PATH")
   device_password=$(jq -r '.device_password' "$CONFIG_PATH")
-  devices=$(jq -r '.devices | join(",")' "$CONFIG_PATH" 2>/dev/null || echo "")
+  devices=$(jq -r '.devices // empty' "$CONFIG_PATH" 2>/dev/null || echo "")
   mqtt_host=$(jq -r '.mqtt_host' "$CONFIG_PATH")
   mqtt_port=$(jq -r '.mqtt_port' "$CONFIG_PATH")
   mqtt_username=$(jq -r '.mqtt_username // empty' "$CONFIG_PATH")

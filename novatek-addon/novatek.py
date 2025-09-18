@@ -61,14 +61,12 @@ class NovatekClient:
                 last_err = e
                 code = getattr(e.response, "status_code", None)
                 if attempt == 0 and code in (401, 403):
-                    # SID протух — перелогиниваемся и повторяем
                     self.login()
                     continue
                 raise
             except Exception as e:
                 last_err = e
                 if attempt == 0:
-                    # Первая ошибка — пробуем перелогиниться
                     try:
                         self.login()
                         continue
@@ -78,11 +76,9 @@ class NovatekClient:
 
             status = resp.get("STATUS")
             if attempt == 0 and status == "ERROR_LOGIN":
-                # перелогин и повтор
                 self.login()
                 continue
             return resp
-        # Если сюда дошли — выбрасываем последнюю ошибку
         if last_err:
             raise last_err
         return {"STATUS": "ERROR"}
@@ -99,7 +95,6 @@ class MqttPublisher:
             self.client.loop_start()
             print(f"[MQTT] Connected to {host}:{port}", flush=True)
         except Exception:
-            # MQTT недоступен — работаем без публикации, но продолжаем опрос
             self.enabled = False
             print(f"[MQTT] Disabled (connection failed to {host}:{port})", flush=True)
 
@@ -214,7 +209,6 @@ def main():
             "device": device_info,
         }, retain=True)
 
-    # init clients and discovery
     for host in devices:
         clients[host] = NovatekClient(host, device_password)
         last_slow[host] = 0.0
@@ -226,7 +220,6 @@ def main():
         for host in devices:
             cli = clients[host]
             try:
-                # Fast metrics
                 fast_keys = [s["key"] for s in SENSORS if s["state_class"] == "measurement"]
                 pub_count = 0
                 for key in fast_keys:
@@ -241,7 +234,6 @@ def main():
                     mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", {"value": value})
                     pub_count += 1
 
-                # Slow diagnostics
                 if now - last_slow[host] >= poll_slow:
                     last_slow[host] = now
                     diag_keys = [
