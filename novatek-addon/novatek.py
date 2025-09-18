@@ -133,8 +133,13 @@ BINARY_SENSORS = [
 
 
 def main():
-    device_host = os.getenv("NOVATEK_DEVICE_HOST", "172.24.15.248")
+    default_host = os.getenv("NOVATEK_DEVICE_HOST", "172.24.15.248")
     device_password = os.getenv("NOVATEK_DEVICE_PASSWORD", "4129177")
+    devices_env = (os.getenv("NOVATEK_DEVICES", "") or "").strip()
+    devices = [h.strip() for h in devices_env.split(",") if h.strip()]
+    if not devices:
+        devices = [default_host]
+
     mqtt_host = os.getenv("NOVATEK_MQTT_HOST", "core-mosquitto")
     mqtt_port = int(os.getenv("NOVATEK_MQTT_PORT", "1883"))
     mqtt_username = os.getenv("NOVATEK_MQTT_USERNAME") or None
@@ -144,36 +149,36 @@ def main():
     poll_fast = int(os.getenv("NOVATEK_POLL_FAST", "10"))
     poll_slow = int(os.getenv("NOVATEK_POLL_SLOW", "60"))
 
-    print(f"[INIT] Novatek host={device_host} MQTT={mqtt_host}:{mqtt_port}", flush=True)
-    client = NovatekClient(device_host, device_password)
+    print(f"[INIT] Devices={devices} MQTT={mqtt_host}:{mqtt_port}", flush=True)
     mqtt_pub = MqttPublisher(mqtt_host, mqtt_port, mqtt_username, mqtt_password)
 
-    def ensure_login():
+    clients: Dict[str, NovatekClient] = {}
+    last_slow: Dict[str, float] = {}
+
+    def ensure_login(host: str) -> str:
+        cli = clients[host]
         for _ in range(3):
             try:
-                sid = client.login()
-                print(f"[LOGIN] SID={sid}", flush=True)
+                sid = cli.login()
+                print(f"[LOGIN] {host} SID={sid}", flush=True)
                 return sid
             except Exception as e:
-                print(f"[LOGIN] Failed: {e}", flush=True)
+                print(f"[LOGIN] {host} failed: {e}", flush=True)
                 time.sleep(1)
-        raise RuntimeError("Failed to login after retries")
+        raise RuntimeError(f"Failed to login {host} after retries")
 
-    ensure_login()
-
-    device_info = {
-        "identifiers": [f"novatek_{device_host}"],
-        "manufacturer": "Novatek",
-        "model": "EM-129",
-        "name": f"Novatek {device_host}",
-    }
-
-    def publish_discovery():
+    def publish_discovery_for_host(host: str):
+        device_info = {
+            "identifiers": [f"novatek_{host}"],
+            "manufacturer": "Novatek",
+            "model": "EM-129",
+            "name": f"Novatek {host}",
+        }
         for s in SENSORS:
-            unique_id = f"novatek_{device_host}_{s['key']}"
-            state_topic = f"{base_topic}/state/{s['key']}"
+            unique_id = f"novatek_{host}_{s['key']}"
+            state_topic = f"{base_topic}/{host}/state/{s['key']}"
             config = {
-                "name": f"Novatek {s['name']}",
+                "name": f"Novatek {host} {s['name']}",
                 "state_topic": state_topic,
                 "unique_id": unique_id,
                 "device": device_info,
@@ -185,10 +190,10 @@ def main():
             mqtt_pub.publish(topic, config, retain=True)
 
         for b in BINARY_SENSORS:
-            unique_id = f"novatek_{device_host}_{b['key']}"
-            state_topic = f"{base_topic}/state/{b['key']}"
+            unique_id = f"novatek_{host}_{b['key']}"
+            state_topic = f"{base_topic}/{host}/state/{b['key']}"
             config = {
-                "name": f"Novatek {b['name']}",
+                "name": f"Novatek {host} {b['name']}",
                 "state_topic": state_topic,
                 "unique_id": unique_id,
                 "device": device_info,
@@ -196,85 +201,84 @@ def main():
                 "payload_on": 1,
                 "payload_off": 0,
             }
-            # remove None values
             config = {k: v for k, v in config.items() if v is not None}
             topic = f"{discovery_prefix}/binary_sensor/{unique_id}/config"
             mqtt_pub.publish(topic, config, retain=True)
 
-        # network/info diagnostics as attributes topic
-        attr_topic = f"{base_topic}/state/attributes"
-        mqtt_pub.publish(f"{discovery_prefix}/sensor/novatek_{device_host}_info/config", {
-            "name": f"Novatek Info",
-            "state_topic": f"{base_topic}/state/info",
+        attr_topic = f"{base_topic}/{host}/state/attributes"
+        mqtt_pub.publish(f"{discovery_prefix}/sensor/novatek_{host}_info/config", {
+            "name": f"Novatek {host} Info",
+            "state_topic": f"{base_topic}/{host}/state/info",
             "json_attributes_topic": attr_topic,
-            "unique_id": f"novatek_{device_host}_info",
+            "unique_id": f"novatek_{host}_info",
             "device": device_info,
         }, retain=True)
 
-    publish_discovery()
+    # init clients and discovery
+    for host in devices:
+        clients[host] = NovatekClient(host, device_password)
+        last_slow[host] = 0.0
+        ensure_login(host)
+        publish_discovery_for_host(host)
 
-    last_slow = 0.0
-
-    loop_iter = 0
     while True:
         now = time.time()
-        try:
-            # Fast loop metrics
-            fast_keys = [s["key"] for s in SENSORS if s["state_class"] == "measurement"]
-            pub_count = 0
-            for key in fast_keys:
-                data = client.get_value(key)
-                if data.get("STATUS") != "OK":
-                    # можно залогировать только ошибки синтаксиса
-                    if data.get("STATUS") not in ("OK", None):
-                        print(f"[GET] {key} -> {data.get('STATUS')}", flush=True)
-                    continue
-                raw_val = [v for k, v in data.items() if k != "STATUS"][0]
-                sensor_def = next(s for s in SENSORS if s["key"] == key)
-                value = (raw_val or 0) * sensor_def["scale"]
-                mqtt_pub.publish(f"{base_topic}/state/{key}", {"value": value})
-                pub_count += 1
-
-            # Slow loop diagnostics
-            if now - last_slow >= poll_slow:
-                last_slow = now
-                diag_keys = [
-                    "enrga_msr", "enrga_d_msr", "enrga_w_msr", "enrga_m_msr",
-                    "wifi_ip", "wifi_gw", "wifi_mask", "wifi_ssid",
-                    "device_ip", "device_mac",
-                    "time", "time_gmt", "sync_sntp_time",
-                    "pow_enable", "freq_enable", "dst_enable", "cloud_enable", "hctrl_enable", "wifi_dhcp_enable", "sync_sntp_enable",
-                ]
-                attrs: Dict[str, Any] = {}
-                for key in diag_keys:
-                    try:
-                        data = client.get_value(key)
-                    except Exception as e:
-                        print(f"[GET] {key} exception: {e}", flush=True)
-                        continue
-                    if data.get("STATUS") != "OK":
-                        print(f"[GET] {key} -> {data.get('STATUS')}", flush=True)
-                        continue
-                    k = [x for x in data.keys() if x != "STATUS"][0]
-                    v = data[k]
-                    if key == "wifi_ssid" and isinstance(v, str):
-                        v = hex_to_ascii(v)
-                    if key.startswith("enrga_") and isinstance(v, (int, float)):
-                        v = v * 0.001
-                    attrs[key] = v
-                    # also publish individual binary sensors
-                    if key.endswith("_enable"):
-                        mqtt_pub.publish(f"{base_topic}/state/{key}", v)
-                mqtt_pub.publish(f"{base_topic}/state/attributes", attrs)
-                print(f"[PUBLISH] fast={pub_count} attrs={len(attrs)}", flush=True)
-
-        except Exception as e:
-            # try relogin on any failure
-            print(f"[ERROR] loop error: {e}", flush=True)
+        for host in devices:
+            cli = clients[host]
             try:
-                ensure_login()
-            except Exception:
-                pass
+                # Fast metrics
+                fast_keys = [s["key"] for s in SENSORS if s["state_class"] == "measurement"]
+                pub_count = 0
+                for key in fast_keys:
+                    data = cli.get_value(key)
+                    if data.get("STATUS") != "OK":
+                        if data.get("STATUS") not in ("OK", None):
+                            print(f"[GET] {host} {key} -> {data.get('STATUS')}", flush=True)
+                        continue
+                    raw_val = [v for k, v in data.items() if k != "STATUS"][0]
+                    sensor_def = next(s for s in SENSORS if s["key"] == key)
+                    value = (raw_val or 0) * sensor_def["scale"]
+                    mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", {"value": value})
+                    pub_count += 1
+
+                # Slow diagnostics
+                if now - last_slow[host] >= poll_slow:
+                    last_slow[host] = now
+                    diag_keys = [
+                        "enrga_msr", "enrga_d_msr", "enrga_w_msr", "enrga_m_msr",
+                        "wifi_ip", "wifi_gw", "wifi_mask", "wifi_ssid",
+                        "device_ip", "device_mac",
+                        "time", "time_gmt", "sync_sntp_time",
+                        "pow_enable", "freq_enable", "dst_enable", "cloud_enable", "hctrl_enable", "wifi_dhcp_enable", "sync_sntp_enable",
+                    ]
+                    attrs: Dict[str, Any] = {}
+                    for key in diag_keys:
+                        try:
+                            data = cli.get_value(key)
+                        except Exception as e:
+                            print(f"[GET] {host} {key} exception: {e}", flush=True)
+                            continue
+                        if data.get("STATUS") != "OK":
+                            print(f"[GET] {host} {key} -> {data.get('STATUS')}", flush=True)
+                            continue
+                        k = [x for x in data.keys() if x != "STATUS"][0]
+                        v = data[k]
+                        if key == "wifi_ssid" and isinstance(v, str):
+                            v = hex_to_ascii(v)
+                        if key.startswith("enrga_") and isinstance(v, (int, float)):
+                            v = v * 0.001
+                        attrs[key] = v
+                        if key.endswith("_enable"):
+                            mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", v)
+                    mqtt_pub.publish(f"{base_topic}/{host}/state/attributes", attrs)
+                    print(f"[PUBLISH] {host} fast={pub_count} attrs={len(attrs)}", flush=True)
+
+            except Exception as e:
+                print(f"[ERROR] {host} loop error: {e}", flush=True)
+                try:
+                    ensure_login(host)
+                except Exception:
+                    pass
 
         time.sleep(poll_fast)
 
