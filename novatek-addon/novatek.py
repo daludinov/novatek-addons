@@ -180,6 +180,7 @@ def main():
                 "unit_of_measurement": s["unit"],
                 "device_class": s["device_class"],
                 "state_class": s["state_class"],
+                "value_template": "{{ value }}",
             }
             topic = f"{discovery_prefix}/sensor/{unique_id}/config"
             mqtt_pub.publish(topic, config, retain=True)
@@ -193,8 +194,8 @@ def main():
                 "unique_id": unique_id,
                 "device": device_info,
                 "device_class": "power" if "pow" in b["key"] else None,
-                "payload_on": 1,
-                "payload_off": 0,
+                "payload_on": "1",
+                "payload_off": "0",
             }
             config = {k: v for k, v in config.items() if v is not None}
             topic = f"{discovery_prefix}/binary_sensor/{unique_id}/config"
@@ -208,6 +209,8 @@ def main():
             "unique_id": f"novatek_{host}_info",
             "device": device_info,
         }, retain=True)
+        # Публикуем начальное состояние info
+        mqtt_pub.publish(f"{base_topic}/{host}/state/info", {"status": "online"})
 
     for host in devices:
         clients[host] = NovatekClient(host, device_password)
@@ -231,7 +234,7 @@ def main():
                     raw_val = [v for k, v in data.items() if k != "STATUS"][0]
                     sensor_def = next(s for s in SENSORS if s["key"] == key)
                     value = (raw_val or 0) * sensor_def["scale"]
-                    mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", {"value": value})
+                    mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", value)
                     pub_count += 1
 
                 if now - last_slow[host] >= poll_slow:
