@@ -91,6 +91,8 @@ class MqttPublisher:
         if username:
             self.client.username_pw_set(username, password or None)
         try:
+            # Set Last Will on bridge status topic
+            self.client.will_set("novatek/bridge/status", payload="offline", retain=False, qos=0)
             self.client.connect(host, port, keepalive=60)
             self.client.loop_start()
             print(f"[MQTT] Connected to {host}:{port}", flush=True)
@@ -98,10 +100,15 @@ class MqttPublisher:
             self.enabled = False
             print(f"[MQTT] Disabled (connection failed to {host}:{port})", flush=True)
 
-    def publish(self, topic: str, payload: Dict[str, Any], retain: bool = False):
+    def publish(self, topic: str, payload: Any, retain: bool = False):
         if not self.enabled:
             return
-        self.client.publish(topic, json.dumps(payload, ensure_ascii=False), retain=retain)
+        if isinstance(payload, (int, float)):
+            self.client.publish(topic, str(payload), retain=retain)
+        elif isinstance(payload, str):
+            self.client.publish(topic, payload, retain=retain)
+        else:
+            self.client.publish(topic, json.dumps(payload, ensure_ascii=False), retain=retain)
 
 
 SENSORS = [
@@ -172,6 +179,7 @@ def main():
         for s in SENSORS:
             unique_id = f"novatek_{host}_{s['key']}"
             state_topic = f"{base_topic}/{host}/state/{s['key']}"
+            avail_topic = f"{base_topic}/{host}/status"
             config = {
                 "name": f"Novatek {host} {s['name']}",
                 "state_topic": state_topic,
@@ -180,7 +188,10 @@ def main():
                 "unit_of_measurement": s["unit"],
                 "device_class": s["device_class"],
                 "state_class": s["state_class"],
-                "value_template": "{{ value }}",
+                "value_template": "{{ value|float }}",
+                "availability_topic": avail_topic,
+                "payload_available": "online",
+                "payload_not_available": "offline",
             }
             topic = f"{discovery_prefix}/sensor/{unique_id}/config"
             mqtt_pub.publish(topic, config, retain=True)
@@ -188,6 +199,7 @@ def main():
         for b in BINARY_SENSORS:
             unique_id = f"novatek_{host}_{b['key']}"
             state_topic = f"{base_topic}/{host}/state/{b['key']}"
+            avail_topic = f"{base_topic}/{host}/status"
             config = {
                 "name": f"Novatek {host} {b['name']}",
                 "state_topic": state_topic,
@@ -196,6 +208,9 @@ def main():
                 "device_class": "power" if "pow" in b["key"] else None,
                 "payload_on": "1",
                 "payload_off": "0",
+                "availability_topic": avail_topic,
+                "payload_available": "online",
+                "payload_not_available": "offline",
             }
             config = {k: v for k, v in config.items() if v is not None}
             topic = f"{discovery_prefix}/binary_sensor/{unique_id}/config"
@@ -208,9 +223,14 @@ def main():
             "json_attributes_topic": attr_topic,
             "unique_id": f"novatek_{host}_info",
             "device": device_info,
+            "availability_topic": f"{base_topic}/{host}/status",
+            "payload_available": "online",
+            "payload_not_available": "offline",
+            "value_template": "{{ value }}",
         }, retain=True)
-        # Публикуем начальное состояние info
-        mqtt_pub.publish(f"{base_topic}/{host}/state/info", {"status": "online"})
+        # Publish initial availability and info
+        mqtt_pub.publish(f"{base_topic}/{host}/status", "online")
+        mqtt_pub.publish(f"{base_topic}/{host}/state/info", "online")
 
     for host in devices:
         clients[host] = NovatekClient(host, device_password)
@@ -263,8 +283,8 @@ def main():
                         if key.startswith("enrga_") and isinstance(v, (int, float)):
                             v = v * 0.001
                         attrs[key] = v
-                        if key.endswith("_enable"):
-                            mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", v)
+                    if key.endswith("_enable"):
+                        mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", "1" if v else "0")
                     mqtt_pub.publish(f"{base_topic}/{host}/state/attributes", attrs)
                     print(f"[PUBLISH] {host} fast={pub_count} attrs={len(attrs)}", flush=True)
 
