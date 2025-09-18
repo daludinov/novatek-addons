@@ -207,6 +207,8 @@ def main():
             unique_id = f"novatek_{safe_host}_{s['key']}"
             state_topic = f"{base_topic}/{host}/state/{s['key']}"
             avail_topic = f"{base_topic}/{host}/status"
+            # Подбираем шаблон обработки значения: для счётчиков — целые, иначе float
+            vt = "{{ value|int }}" if s.get("unit") == "count" else "{{ value|float }}"
             config = {
                 "name": s['name'],
                 "state_topic": state_topic,
@@ -216,7 +218,7 @@ def main():
                 "device_class": s.get("device_class"),
                 "state_class": s.get("state_class"),
                 "entity_category": s.get("entity_category"),
-                "value_template": "{{ value|float }}",
+                "value_template": vt,
                 "availability_topic": avail_topic,
                 "payload_available": "online",
                 "payload_not_available": "offline",
@@ -424,9 +426,9 @@ def main():
                                 except Exception:
                                     iv = v
                                 if key == "volt_count_apv" and iv == 65535:
-                                    mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", "")
+                                    mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", "", retain=True)
                                 else:
-                                    mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", str(iv))
+                                    mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", str(iv), retain=True)
                                 publish_value = iv
                             else:
                                 if key == "sync_sntp_time" and isinstance(v, (int, float)):
