@@ -124,6 +124,16 @@ SENSORS = [
     {"key": "enrga_w_msr", "name": "Energy Week", "device_class": "energy", "unit": "kWh", "scale": 0.001, "state_class": "total", "fast": False, "entity_category": "diagnostic"},
     {"key": "enrga_m_msr", "name": "Energy Month", "device_class": "energy", "unit": "kWh", "scale": 0.001, "state_class": "total", "fast": False, "entity_category": "diagnostic"},
     {"key": "enrgs_msr", "name": "Energy Sum Alt", "device_class": "energy", "unit": "kWh", "scale": 0.001, "state_class": "total_increasing", "fast": False, "entity_category": "diagnostic"},
+    # System/time/WiFi (diagnostics)
+    {"key": "time", "name": "Device Time", "device_class": None, "unit": None, "scale": 1.0, "state_class": None, "fast": False, "entity_category": "diagnostic"},
+    {"key": "time_gmt", "name": "Time GMT Offset", "device_class": None, "unit": "s", "scale": 1.0, "state_class": None, "fast": False, "entity_category": "diagnostic"},
+    {"key": "sync_sntp_time", "name": "SNTP Sync Interval", "device_class": None, "unit": "s", "scale": 0.001, "state_class": None, "fast": False, "entity_category": "diagnostic"},
+    {"key": "wifi_ip", "name": "WiFi IP", "device_class": None, "unit": None, "scale": 1.0, "state_class": None, "fast": False, "entity_category": "diagnostic"},
+    {"key": "wifi_gw", "name": "WiFi Gateway", "device_class": None, "unit": None, "scale": 1.0, "state_class": None, "fast": False, "entity_category": "diagnostic"},
+    {"key": "wifi_mask", "name": "WiFi Mask", "device_class": None, "unit": None, "scale": 1.0, "state_class": None, "fast": False, "entity_category": "diagnostic"},
+    {"key": "wifi_ssid", "name": "WiFi SSID", "device_class": None, "unit": None, "scale": 1.0, "state_class": None, "fast": False, "entity_category": "diagnostic"},
+    {"key": "device_ip", "name": "Device IP", "device_class": None, "unit": None, "scale": 1.0, "state_class": None, "fast": False, "entity_category": "diagnostic"},
+    {"key": "device_mac", "name": "Device MAC", "device_class": None, "unit": None, "scale": 1.0, "state_class": None, "fast": False, "entity_category": "diagnostic"},
     # Thresholds/timers (diagnostics)
     {"key": "cur_leveloff", "name": "Current Cutoff", "device_class": "current", "unit": "A", "scale": 0.1, "state_class": "measurement", "fast": False, "entity_category": "diagnostic"},
     {"key": "cur_timeoff", "name": "Current Time Off", "device_class": None, "unit": "s", "scale": 0.001, "state_class": None, "fast": False, "entity_category": "diagnostic"},
@@ -207,8 +217,14 @@ def main():
             unique_id = f"novatek_{safe_host}_{s['key']}"
             state_topic = f"{base_topic}/{host}/state/{s['key']}"
             avail_topic = f"{base_topic}/{host}/status"
-            # Подбираем шаблон обработки значения: для счётчиков — целые, иначе float
-            vt = "{{ value|int }}" if s.get("unit") == "count" else "{{ value|float }}"
+            # Подбираем шаблон: count -> int; строковые (unit None/"") -> raw; остальное -> float
+            unit = s.get("unit")
+            if unit == "count":
+                vt = "{{ value|int }}"
+            elif unit in (None, ""):
+                vt = "{{ value }}"
+            else:
+                vt = "{{ value|float }}"
             config = {
                 "name": s['name'],
                 "state_topic": state_topic,
