@@ -116,7 +116,7 @@ SENSORS = [
     {"key": "volt_msr", "name": "Voltage", "device_class": "voltage", "unit": "V", "scale": 0.1, "state_class": "measurement"},
     {"key": "freq_msr", "name": "Frequency", "device_class": "frequency", "unit": "Hz", "scale": 0.01, "state_class": "measurement"},
     {"key": "tempr_msr", "name": "Temperature", "device_class": "temperature", "unit": "°C", "scale": 0.1, "state_class": "measurement"},
-    {"key": "cur_msr", "name": "Current", "device_class": "current", "unit": "A", "scale": 0.1, "state_class": "measurement"},
+    {"key": "cur_msr", "name": "Current", "device_class": "current", "unit": "A", "scale": 0.01, "state_class": "measurement"},
     {"key": "powa_msr", "name": "Power Active", "device_class": "power", "unit": "W", "scale": 1.0, "state_class": "measurement"},
     {"key": "pows_msr", "name": "Power Sum", "device_class": "power", "unit": "W", "scale": 1.0, "state_class": "measurement"},
     {"key": "enrga_msr", "name": "Energy Total", "device_class": "energy", "unit": "kWh", "scale": 0.001, "state_class": "total_increasing"},

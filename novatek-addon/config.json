@@ -1,6 +1,6 @@
 {
   "name": "Novatek Monitor",
-  "version": "0.2.10",
+  "version": "0.2.11",
   "slug": "novatek_monitor",
   "description": "Мониторинг устройства Novatek и публикация сенсоров в MQTT с autodiscovery Home Assistant.",
   "arch": ["aarch64", "amd64", "armhf", "armv7", "i386"],
