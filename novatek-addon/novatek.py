@@ -113,16 +113,38 @@ class MqttPublisher:
 
 
 SENSORS = [
-    {"key": "volt_msr", "name": "Voltage", "device_class": "voltage", "unit": "V", "scale": 0.1, "state_class": "measurement"},
-    {"key": "freq_msr", "name": "Frequency", "device_class": "frequency", "unit": "Hz", "scale": 0.01, "state_class": "measurement"},
-    {"key": "tempr_msr", "name": "Temperature", "device_class": "temperature", "unit": "°C", "scale": 0.1, "state_class": "measurement"},
-    {"key": "cur_msr", "name": "Current", "device_class": "current", "unit": "A", "scale": 0.01, "state_class": "measurement"},
-    {"key": "powa_msr", "name": "Power Active", "device_class": "power", "unit": "W", "scale": 1.0, "state_class": "measurement"},
-    {"key": "pows_msr", "name": "Power Sum", "device_class": "power", "unit": "W", "scale": 1.0, "state_class": "measurement"},
-    {"key": "enrga_msr", "name": "Energy Total", "device_class": "energy", "unit": "kWh", "scale": 0.001, "state_class": "total_increasing"},
-    {"key": "enrga_d_msr", "name": "Energy Day", "device_class": "energy", "unit": "kWh", "scale": 0.001, "state_class": "total"},
-    {"key": "enrga_w_msr", "name": "Energy Week", "device_class": "energy", "unit": "kWh", "scale": 0.001, "state_class": "total"},
-    {"key": "enrga_m_msr", "name": "Energy Month", "device_class": "energy", "unit": "kWh", "scale": 0.001, "state_class": "total"},
+    {"key": "volt_msr", "name": "Voltage", "device_class": "voltage", "unit": "V", "scale": 0.1, "state_class": "measurement", "fast": True},
+    {"key": "freq_msr", "name": "Frequency", "device_class": "frequency", "unit": "Hz", "scale": 0.01, "state_class": "measurement", "fast": True},
+    {"key": "tempr_msr", "name": "Temperature", "device_class": "temperature", "unit": "°C", "scale": 0.1, "state_class": "measurement", "fast": True},
+    {"key": "cur_msr", "name": "Current", "device_class": "current", "unit": "A", "scale": 0.01, "state_class": "measurement", "fast": True},
+    {"key": "powa_msr", "name": "Power Active", "device_class": "power", "unit": "W", "scale": 1.0, "state_class": "measurement", "fast": True},
+    {"key": "pows_msr", "name": "Power Sum", "device_class": "power", "unit": "W", "scale": 1.0, "state_class": "measurement", "fast": True},
+    {"key": "enrga_msr", "name": "Energy Total", "device_class": "energy", "unit": "kWh", "scale": 0.001, "state_class": "total_increasing", "fast": False},
+    {"key": "enrga_d_msr", "name": "Energy Day", "device_class": "energy", "unit": "kWh", "scale": 0.001, "state_class": "total", "fast": False, "entity_category": "diagnostic"},
+    {"key": "enrga_w_msr", "name": "Energy Week", "device_class": "energy", "unit": "kWh", "scale": 0.001, "state_class": "total", "fast": False, "entity_category": "diagnostic"},
+    {"key": "enrga_m_msr", "name": "Energy Month", "device_class": "energy", "unit": "kWh", "scale": 0.001, "state_class": "total", "fast": False, "entity_category": "diagnostic"},
+    {"key": "enrgs_msr", "name": "Energy Sum Alt", "device_class": "energy", "unit": "kWh", "scale": 0.001, "state_class": "total_increasing", "fast": False, "entity_category": "diagnostic"},
+    # Thresholds/timers (diagnostics)
+    {"key": "cur_leveloff", "name": "Current Cutoff", "device_class": "current", "unit": "A", "scale": 0.1, "state_class": "measurement", "fast": False, "entity_category": "diagnostic"},
+    {"key": "cur_timeoff", "name": "Current Time Off", "device_class": None, "unit": "s", "scale": 0.001, "state_class": None, "fast": False, "entity_category": "diagnostic"},
+    {"key": "cur_timeon_apv", "name": "Current Time On APV", "device_class": None, "unit": "s", "scale": 0.001, "state_class": None, "fast": False, "entity_category": "diagnostic"},
+    {"key": "pow_leveloff", "name": "Power Cutoff", "device_class": "power", "unit": "W", "scale": 1.0, "state_class": "measurement", "fast": False, "entity_category": "diagnostic"},
+    {"key": "pow_timeoff", "name": "Power Time Off", "device_class": None, "unit": "s", "scale": 0.001, "state_class": None, "fast": False, "entity_category": "diagnostic"},
+    {"key": "pow_timeon_apv", "name": "Power Time On APV", "device_class": None, "unit": "s", "scale": 0.001, "state_class": None, "fast": False, "entity_category": "diagnostic"},
+    {"key": "freq_leveloff_hi", "name": "Frequency High Cutoff", "device_class": "frequency", "unit": "Hz", "scale": 0.01, "state_class": "measurement", "fast": False, "entity_category": "diagnostic"},
+    {"key": "freq_leveloff_lo", "name": "Frequency Low Cutoff", "device_class": "frequency", "unit": "Hz", "scale": 0.01, "state_class": "measurement", "fast": False, "entity_category": "diagnostic"},
+    {"key": "freq_timeoff", "name": "Frequency Time Off", "device_class": None, "unit": "s", "scale": 0.001, "state_class": None, "fast": False, "entity_category": "diagnostic"},
+    {"key": "freq_timeon_apv", "name": "Frequency Time On APV", "device_class": None, "unit": "s", "scale": 0.001, "state_class": None, "fast": False, "entity_category": "diagnostic"},
+    {"key": "volt_leveloff_hi", "name": "Voltage High Cutoff", "device_class": "voltage", "unit": "V", "scale": 1.0, "state_class": "measurement", "fast": False, "entity_category": "diagnostic"},
+    {"key": "volt_leveloff_lo", "name": "Voltage Low Cutoff", "device_class": "voltage", "unit": "V", "scale": 1.0, "state_class": "measurement", "fast": False, "entity_category": "diagnostic"},
+    {"key": "volt_level_hys", "name": "Voltage Hysteresis", "device_class": "voltage", "unit": "V", "scale": 1.0, "state_class": "measurement", "fast": False, "entity_category": "diagnostic"},
+    {"key": "volt_timeoff_hi", "name": "Voltage Time Off High", "device_class": None, "unit": "s", "scale": 0.001, "state_class": None, "fast": False, "entity_category": "diagnostic"},
+    {"key": "volt_timeoff_lo", "name": "Voltage Time Off Low", "device_class": None, "unit": "s", "scale": 0.001, "state_class": None, "fast": False, "entity_category": "diagnostic"},
+    {"key": "volt_timeon_apv", "name": "Voltage Time On APV", "device_class": None, "unit": "s", "scale": 0.001, "state_class": None, "fast": False, "entity_category": "diagnostic"},
+    # APV counters
+    {"key": "freq_count_apv", "name": "APV Count Frequency", "device_class": None, "unit": "count", "scale": 1.0, "state_class": None, "fast": False, "entity_category": "diagnostic"},
+    {"key": "pow_count_apv", "name": "APV Count Power", "device_class": None, "unit": "count", "scale": 1.0, "state_class": None, "fast": False, "entity_category": "diagnostic"},
+    {"key": "volt_count_apv", "name": "APV Count Voltage", "device_class": None, "unit": "count", "scale": 1.0, "state_class": None, "fast": False, "entity_category": "diagnostic"},
 ]
 
 BINARY_SENSORS = [
@@ -186,18 +208,21 @@ def main():
             state_topic = f"{base_topic}/{host}/state/{s['key']}"
             avail_topic = f"{base_topic}/{host}/status"
             config = {
-                "name": f"Novatek {host} {s['name']}",
+                "name": s['name'],
                 "state_topic": state_topic,
                 "unique_id": unique_id,
                 "device": device_info,
                 "unit_of_measurement": s["unit"],
-                "device_class": s["device_class"],
-                "state_class": s["state_class"],
+                "device_class": s.get("device_class"),
+                "state_class": s.get("state_class"),
+                "entity_category": s.get("entity_category"),
                 "value_template": "{{ value|float }}",
                 "availability_topic": avail_topic,
                 "payload_available": "online",
                 "payload_not_available": "offline",
             }
+            # remove None values
+            config = {k: v for k, v in config.items() if v is not None}
             object_id = s["key"]
             topic = f"{discovery_prefix}/sensor/{node_id}/{object_id}/config"
             mqtt_pub.publish(topic, config, retain=True)
@@ -207,7 +232,7 @@ def main():
             state_topic = f"{base_topic}/{host}/state/{b['key']}"
             avail_topic = f"{base_topic}/{host}/status"
             config = {
-                "name": f"Novatek {host} {b['name']}",
+                "name": b['name'],
                 "state_topic": state_topic,
                 "unique_id": unique_id,
                 "device": device_info,
@@ -225,7 +250,7 @@ def main():
 
         attr_topic = f"{base_topic}/{host}/state/attributes"
         mqtt_pub.publish(f"{discovery_prefix}/sensor/{node_id}/info/config", {
-            "name": f"Novatek {host} Info",
+            "name": "Info",
             "state_topic": f"{base_topic}/{host}/state/info",
             "json_attributes_topic": attr_topic,
             "unique_id": f"novatek_{safe_host}_info",
@@ -238,6 +263,37 @@ def main():
         # Publish initial availability (retained) and info (retained)
         mqtt_pub.publish(f"{base_topic}/{host}/status", "online", retain=True)
         mqtt_pub.publish(f"{base_topic}/{host}/state/info", "online", retain=True)
+
+    # helpers
+    def scale_and_round(key: str, value: Any) -> Any:
+        try:
+            sensor_def = next((s for s in SENSORS if s["key"] == key), None)
+        except StopIteration:
+            sensor_def = None
+        if sensor_def is None or not isinstance(value, (int, float)):
+            return value
+        scaled = value * sensor_def.get("scale", 1.0)
+        unit = sensor_def.get("unit")
+        if unit == "Hz":
+            return round(scaled, 2)
+        if unit == "V":
+            return round(scaled, 1)
+        if unit == "°C":
+            return round(scaled, 1)
+        if unit == "A":
+            return round(scaled, 2)
+        if unit == "W":
+            return int(round(scaled))
+        if unit == "kWh":
+            return round(scaled, 3)
+        if unit == "s":
+            return round(scaled, 3)
+        if unit == "count":
+            return int(round(scaled))
+        return scaled
+
+    def is_counter_key(key: str) -> bool:
+        return key in ("freq_count_apv", "pow_count_apv", "volt_count_apv")
 
     for host in devices:
         clients[host] = NovatekClient(host, device_password)
@@ -252,6 +308,13 @@ def main():
                 "device_ip", "device_mac",
                 "time", "time_gmt", "sync_sntp_time",
                 "pow_enable", "freq_enable", "dst_enable", "cloud_enable", "hctrl_enable", "wifi_dhcp_enable", "sync_sntp_enable",
+                # thresholds/timers/counters
+                "cur_leveloff", "cur_timeoff", "cur_timeon_apv",
+                "pow_leveloff", "pow_timeoff", "pow_timeon_apv",
+                "freq_leveloff_hi", "freq_leveloff_lo", "freq_timeoff", "freq_timeon_apv",
+                "volt_leveloff_hi", "volt_leveloff_lo", "volt_level_hys", "volt_timeoff_hi", "volt_timeoff_lo", "volt_timeon_apv",
+                "freq_count_apv", "pow_count_apv", "volt_count_apv",
+                "enrgs_msr",
             ]
             attrs: Dict[str, Any] = {}
             cli = clients[host]
@@ -266,13 +329,33 @@ def main():
                 v = data[k]
                 if key == "wifi_ssid" and isinstance(v, str):
                     v = hex_to_ascii(v)
-                if key.startswith("enrga_") and isinstance(v, (int, float)):
-                    v = v * 0.001
-                    # publish energy states immediately (retained)
-                    mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", v, retain=True)
-                attrs[key] = v
+                # publish to individual state topic (scaled and rounded if defined)
+                try:
+                    sensor_def = next((s for s in SENSORS if s["key"] == key), None)
+                except StopIteration:
+                    sensor_def = None
+                publish_value = v
                 if key.endswith("_enable"):
                     mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", "1" if v else "0")
+                else:
+                    if is_counter_key(key):
+                        try:
+                            iv = int(v)
+                        except Exception:
+                            iv = v
+                        if key == "volt_count_apv" and iv == 65535:
+                            mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", "", retain=True)
+                        else:
+                            mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", str(iv), retain=True)
+                        publish_value = iv
+                    else:
+                        if key == "sync_sntp_time" and isinstance(v, (int, float)):
+                            publish_value = round(v / 1000.0, 3)
+                            mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", publish_value, retain=True)
+                        else:
+                            publish_value = scale_and_round(key, v)
+                            mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", publish_value, retain=True)
+                attrs[key] = publish_value
             mqtt_pub.publish(f"{base_topic}/{host}/state/attributes", attrs)
         except Exception:
             pass
@@ -282,7 +365,7 @@ def main():
         for host in devices:
             cli = clients[host]
             try:
-                fast_keys = [s["key"] for s in SENSORS if s["state_class"] == "measurement"]
+                fast_keys = [s["key"] for s in SENSORS if s.get("state_class") == "measurement" and s.get("fast", True)]
                 pub_count = 0
                 for key in fast_keys:
                     data = cli.get_value(key)
@@ -292,7 +375,7 @@ def main():
                         continue
                     raw_val = [v for k, v in data.items() if k != "STATUS"][0]
                     sensor_def = next(s for s in SENSORS if s["key"] == key)
-                    value = (raw_val or 0) * sensor_def["scale"]
+                    value = scale_and_round(key, (raw_val or 0))
                     mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", value)
                     pub_count += 1
 
@@ -304,6 +387,13 @@ def main():
                         "device_ip", "device_mac",
                         "time", "time_gmt", "sync_sntp_time",
                         "pow_enable", "freq_enable", "dst_enable", "cloud_enable", "hctrl_enable", "wifi_dhcp_enable", "sync_sntp_enable",
+                        # thresholds/timers/counters
+                        "cur_leveloff", "cur_timeoff", "cur_timeon_apv",
+                        "pow_leveloff", "pow_timeoff", "pow_timeon_apv",
+                        "freq_leveloff_hi", "freq_leveloff_lo", "freq_timeoff", "freq_timeon_apv",
+                        "volt_leveloff_hi", "volt_leveloff_lo", "volt_level_hys", "volt_timeoff_hi", "volt_timeoff_lo", "volt_timeon_apv",
+                        "freq_count_apv", "pow_count_apv", "volt_count_apv",
+                        "enrgs_msr",
                     ]
                     attrs: Dict[str, Any] = {}
                     for key in diag_keys:
@@ -319,13 +409,33 @@ def main():
                         v = data[k]
                         if key == "wifi_ssid" and isinstance(v, str):
                             v = hex_to_ascii(v)
-                        if key.startswith("enrga_") and isinstance(v, (int, float)):
-                            v = v * 0.001
-                            # publish energy states to their topics
-                            mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", v)
-                        attrs[key] = v
+                        # publish to individual state topic (scaled and rounded if defined)
+                        try:
+                            sensor_def = next((s for s in SENSORS if s["key"] == key), None)
+                        except StopIteration:
+                            sensor_def = None
+                        publish_value = v
                         if key.endswith("_enable"):
                             mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", "1" if v else "0")
+                        else:
+                            if is_counter_key(key):
+                                try:
+                                    iv = int(v)
+                                except Exception:
+                                    iv = v
+                                if key == "volt_count_apv" and iv == 65535:
+                                    mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", "")
+                                else:
+                                    mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", str(iv))
+                                publish_value = iv
+                            else:
+                                if key == "sync_sntp_time" and isinstance(v, (int, float)):
+                                    publish_value = round(v / 1000.0, 3)
+                                    mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", publish_value)
+                                else:
+                                    publish_value = scale_and_round(key, v)
+                                    mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", publish_value)
+                        attrs[key] = publish_value
                     mqtt_pub.publish(f"{base_topic}/{host}/state/attributes", attrs)
                     print(f"[PUBLISH] {host} fast={pub_count} attrs={len(attrs)}", flush=True)
 
