@@ -234,15 +234,47 @@ def main():
             "payload_not_available": "offline",
             "value_template": "{{ value }}",
         }, retain=True)
-        # Publish initial availability (retained) and info
+        # Publish initial availability (retained) and info (retained)
         mqtt_pub.publish(f"{base_topic}/{host}/status", "online", retain=True)
-        mqtt_pub.publish(f"{base_topic}/{host}/state/info", "online")
+        mqtt_pub.publish(f"{base_topic}/{host}/state/info", "online", retain=True)
 
     for host in devices:
         clients[host] = NovatekClient(host, device_password)
         last_slow[host] = 0.0
         ensure_login(host)
         publish_discovery_for_host(host)
+        # Initial diagnostic publish so entities don't stay unknown
+        try:
+            diag_keys = [
+                "enrga_msr", "enrga_d_msr", "enrga_w_msr", "enrga_m_msr",
+                "wifi_ip", "wifi_gw", "wifi_mask", "wifi_ssid",
+                "device_ip", "device_mac",
+                "time", "time_gmt", "sync_sntp_time",
+                "pow_enable", "freq_enable", "dst_enable", "cloud_enable", "hctrl_enable", "wifi_dhcp_enable", "sync_sntp_enable",
+            ]
+            attrs: Dict[str, Any] = {}
+            cli = clients[host]
+            for key in diag_keys:
+                try:
+                    data = cli.get_value(key)
+                except Exception:
+                    continue
+                if data.get("STATUS") != "OK":
+                    continue
+                k = [x for x in data.keys() if x != "STATUS"][0]
+                v = data[k]
+                if key == "wifi_ssid" and isinstance(v, str):
+                    v = hex_to_ascii(v)
+                if key.startswith("enrga_") and isinstance(v, (int, float)):
+                    v = v * 0.001
+                    # publish energy states immediately (retained)
+                    mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", v, retain=True)
+                attrs[key] = v
+                if key.endswith("_enable"):
+                    mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", "1" if v else "0")
+            mqtt_pub.publish(f"{base_topic}/{host}/state/attributes", attrs)
+        except Exception:
+            pass
 
     while True:
         now = time.time()
@@ -272,7 +304,7 @@ def main():
                         "time", "time_gmt", "sync_sntp_time",
                         "pow_enable", "freq_enable", "dst_enable", "cloud_enable", "hctrl_enable", "wifi_dhcp_enable", "sync_sntp_enable",
                     ]
-                    attrs: Dict[str, Any] = {}
+                attrs: Dict[str, Any] = {}
                     for key in diag_keys:
                         try:
                             data = cli.get_value(key)
@@ -288,6 +320,8 @@ def main():
                             v = hex_to_ascii(v)
                         if key.startswith("enrga_") and isinstance(v, (int, float)):
                             v = v * 0.001
+                        # publish energy states to their topics
+                        mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", v)
                         attrs[key] = v
                     if key.endswith("_enable"):
                         mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", "1" if v else "0")
