@@ -234,8 +234,8 @@ def main():
             "payload_not_available": "offline",
             "value_template": "{{ value }}",
         }, retain=True)
-        # Publish initial availability and info
-        mqtt_pub.publish(f"{base_topic}/{host}/status", "online")
+        # Publish initial availability (retained) and info
+        mqtt_pub.publish(f"{base_topic}/{host}/status", "online", retain=True)
         mqtt_pub.publish(f"{base_topic}/{host}/state/info", "online")
 
     for host in devices:
