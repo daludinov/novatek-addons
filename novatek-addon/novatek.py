@@ -5,6 +5,7 @@ import binascii
 import hashlib
 import threading
 from typing import Dict, Any
+import re
 
 import requests
 from paho.mqtt import client as mqtt
@@ -170,14 +171,17 @@ def main():
         raise RuntimeError(f"Failed to login {host} after retries")
 
     def publish_discovery_for_host(host: str):
+        # Санитизируем host для discovery topic (точки и прочие символы недопустимы)
+        safe_host = re.sub(r"[^a-z0-9_-]", "_", host.lower().replace(".", "_"))
+        node_id = f"novatek_{safe_host}"
         device_info = {
-            "identifiers": [f"novatek_{host}"],
+            "identifiers": [f"novatek_{safe_host}"],
             "manufacturer": "Novatek",
             "model": "EM-129",
             "name": f"Novatek {host}",
         }
         for s in SENSORS:
-            unique_id = f"novatek_{host}_{s['key']}"
+            unique_id = f"novatek_{safe_host}_{s['key']}"
             state_topic = f"{base_topic}/{host}/state/{s['key']}"
             avail_topic = f"{base_topic}/{host}/status"
             config = {
@@ -193,11 +197,12 @@ def main():
                 "payload_available": "online",
                 "payload_not_available": "offline",
             }
-            topic = f"{discovery_prefix}/sensor/{unique_id}/config"
+            object_id = s["key"]
+            topic = f"{discovery_prefix}/sensor/{node_id}/{object_id}/config"
             mqtt_pub.publish(topic, config, retain=True)
 
         for b in BINARY_SENSORS:
-            unique_id = f"novatek_{host}_{b['key']}"
+            unique_id = f"novatek_{safe_host}_{b['key']}"
             state_topic = f"{base_topic}/{host}/state/{b['key']}"
             avail_topic = f"{base_topic}/{host}/status"
             config = {
@@ -213,15 +218,16 @@ def main():
                 "payload_not_available": "offline",
             }
             config = {k: v for k, v in config.items() if v is not None}
-            topic = f"{discovery_prefix}/binary_sensor/{unique_id}/config"
+            object_id = b["key"]
+            topic = f"{discovery_prefix}/binary_sensor/{node_id}/{object_id}/config"
             mqtt_pub.publish(topic, config, retain=True)
 
         attr_topic = f"{base_topic}/{host}/state/attributes"
-        mqtt_pub.publish(f"{discovery_prefix}/sensor/novatek_{host}_info/config", {
+        mqtt_pub.publish(f"{discovery_prefix}/sensor/{node_id}/info/config", {
             "name": f"Novatek {host} Info",
             "state_topic": f"{base_topic}/{host}/state/info",
             "json_attributes_topic": attr_topic,
-            "unique_id": f"novatek_{host}_info",
+            "unique_id": f"novatek_{safe_host}_info",
             "device": device_info,
             "availability_topic": f"{base_topic}/{host}/status",
             "payload_available": "online",
