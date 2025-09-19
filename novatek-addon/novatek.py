@@ -167,6 +167,8 @@ BINARY_SENSORS = [
     {"key": "sync_sntp_enable", "name": "SNTP Enabled"},
 ]
 
+ENERGY_KEYS = {"enrga_msr", "enrga_d_msr", "enrga_w_msr", "enrga_m_msr", "enrgs_msr"}
+
 
 def main():
     default_host = os.getenv("NOVATEK_DEVICE_HOST", "172.24.15.248")
@@ -461,7 +463,11 @@ def main():
                                     mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", publish_value)
                                 else:
                                     publish_value = scale_and_round(key, v)
-                                    mqtt_pub.publish(f"{base_topic}/{host}/state/{key}", publish_value)
+                                    mqtt_pub.publish(
+                                        f"{base_topic}/{host}/state/{key}",
+                                        publish_value,
+                                        retain=True if key in ENERGY_KEYS else False,
+                                    )
                         attrs[key] = publish_value
                     mqtt_pub.publish(f"{base_topic}/{host}/state/attributes", attrs)
                     print(f"[PUBLISH] {host} fast={pub_count} attrs={len(attrs)}", flush=True)
